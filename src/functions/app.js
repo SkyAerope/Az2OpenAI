@@ -5,6 +5,7 @@ const axios = require('axios');
 const AZURE_ENDPOINT = process.env.AZURE_ENDPOINT;
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
 const AZURE_API_VERSION = process.env.AZURE_API_VERSION || "2025-01-01-preview";
+const TOKEN = process.env.TOKEN;
 
 // 模型到部署名称的映射，左侧为请求名称，右侧为部署名称
 const MODEL_DEPLOYMENT_MAP = {
@@ -19,6 +20,22 @@ app.http('chatCompletions', {
     authLevel: 'anonymous',
     handler: async (request, context) => {
         try {
+            // 0. Bearer 鉴权验证
+            const authHeader = request.headers.get('authorization') || '';
+            const token = authHeader.split(' ')[1];
+            
+            if (!token || token !== TOKEN) {
+                return {
+                    status: 401,
+                    jsonBody: {
+                        error: {
+                            message: "Unauthorized",
+                            type: "invalid_request_error"
+                        }
+                    }
+                };
+            }
+
             // 1. 解析请求
             const reqBody = await request.json();
             const { model, messages, temperature, max_tokens, top_p, stream } = reqBody;
